@@ -18,17 +18,71 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Tesseract.js for Client-Side AI/OCR Transcript Scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
 <body>
     <canvas id="confettiCanvas"></canvas>
     <canvas id="bgCanvas"></canvas>
 
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <div class="container">
         <h1> 🎓KFUEIT CGPA Calculator</h1>
         <p class="subtitle">Fast. Colorful. Precise.</p>
 
+        <!-- AI Transcript Scanner Section -->
+        <div class="ocr-card" id="ocrCard">
+            <div class="ocr-card-header">
+                <div class="ocr-badge">
+                    <span class="ocr-pulse-dot"></span>
+                    <span>AI Transcript Scanner</span>
+                </div>
+                <button type="button" class="ocr-demo-btn" onclick="window.loadDemoTranscript()" title="Test with a sample KFUEIT transcript">
+                    ⚡ Try Demo
+                </button>
+            </div>
 
+            <div class="ocr-dropzone" id="ocrDropzone">
+                <input type="file" id="transcriptFileInput" accept="image/*" style="display:none;" onchange="window.handleImageUpload(event)">
+                <input type="file" id="cameraFileInput" accept="image/*" capture="environment" style="display:none;" onchange="window.handleImageUpload(event)">
+                
+                <div class="ocr-drop-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="ocr-drop-text">
+                    <span class="ocr-main-text">Upload or Capture Transcript</span>
+                    <span class="ocr-sub-text">Drop photo, click to browse, or paste (<kbd>Ctrl+V</kbd>)</span>
+                </div>
+                <div class="ocr-action-pills">
+                    <button type="button" class="ocr-pill-btn" onclick="event.stopPropagation(); document.getElementById('cameraFileInput').click()">
+                        📷 Camera
+                    </button>
+                    <button type="button" class="ocr-pill-btn ocr-pill-primary" onclick="event.stopPropagation(); document.getElementById('transcriptFileInput').click()">
+                        📁 Browse
+                    </button>
+                </div>
+            </div>
+
+            <!-- OCR Progress Bar -->
+            <div class="ocr-progress-box" id="ocrProgressBox" style="display: none;">
+                <div class="ocr-progress-info">
+                    <div class="ocr-progress-label">
+                        <span class="ocr-spinner"></span>
+                        <span id="ocrStatusMsg">Analyzing transcript image...</span>
+                    </div>
+                    <span id="ocrProgressPercent" class="ocr-percent">0%</span>
+                </div>
+                <div class="ocr-track">
+                    <div id="ocrProgressBar" class="ocr-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
 
         <div class="name-section">
             <input type="text" id="studentName" placeholder="Student Name" autocomplete="off">
@@ -36,8 +90,8 @@
 
         <div class="prev-data-section">
             <div class="section-label">Previous Sem (Optional)</div>
-            <input type="number" id="prevCGPA" step="0.01" placeholder="Current CGPA">
-            <input type="number" id="prevCredits" step="1" placeholder="Credits Earned">
+            <input type="number" id="prevCGPA" step="0.01" placeholder="Current CGPA" title="Total CGPA earned up to previous semester">
+            <input type="number" id="prevCredits" step="1" placeholder="Credits Earned" title="Total credit hours completed up to previous semester">
         </div>
 
         <div class="table-container">
@@ -87,6 +141,8 @@
         <div class="message-box">
             <div id="remarkText" class="remark"></div>
             <div id="breakdownText" class="detail-breakdown"></div>
+            <!-- Enhanced Statistics Breakdown Card -->
+            <div id="statsGrid" class="stats-grid" style="display:none;"></div>
         </div>
 
         <footer>
@@ -95,6 +151,81 @@
     </div>
 
     <!-- Modals -->
+
+    <!-- OCR Transcript Review Modal -->
+    <div id="scanModal" class="modal">
+        <div class="modal-content modal-scan-content">
+            <div class="scan-modal-header">
+                <h2>📑 Scanned Transcript Details</h2>
+                <p class="scan-modal-sub">Review scanned values & select how to apply</p>
+            </div>
+
+            <div class="scan-preview-wrapper" id="scanPreviewWrapper" style="display:none;">
+                <div class="scan-img-container">
+                    <img id="scanPreviewImg" src="" alt="Transcript Preview">
+                    <div class="laser-scanner" id="laserScanner"></div>
+                </div>
+            </div>
+
+            <!-- Extracted Summary Block -->
+            <div class="scan-summary-grid">
+                <div class="scan-field">
+                    <label>Student Name</label>
+                    <input type="text" id="scanStudentName" placeholder="Auto-detected or enter name">
+                </div>
+                <div class="scan-field">
+                    <label>Previous Total CGPA</label>
+                    <input type="number" step="0.01" id="scanCGPA" placeholder="e.g. 3.42">
+                </div>
+                <div class="scan-field">
+                    <label>Total Credits Earned</label>
+                    <input type="number" step="1" id="scanCredits" placeholder="e.g. 64">
+                </div>
+                <div class="scan-field">
+                    <label>Semester SGPA (if detected)</label>
+                    <input type="number" step="0.01" id="scanSGPA" placeholder="e.g. 3.65">
+                </div>
+            </div>
+
+            <!-- Extracted Subjects Section -->
+            <div class="scan-courses-section" id="scanCoursesSection">
+                <div class="scan-courses-header">
+                    <span class="scan-section-title">Detected Subjects (<span id="scanCoursesCount">0</span>)</span>
+                    <button type="button" class="ocr-mini-add-btn" onclick="window.addScanCourseRow()">+ Add Course</button>
+                </div>
+                <div class="scan-table-wrapper">
+                    <table class="scan-courses-table" id="scanCoursesTable">
+                        <thead>
+                            <tr>
+                                <th>Course Title</th>
+                                <th style="width:20%">Marks</th>
+                                <th style="width:20%">Grade</th>
+                                <th style="width:15%">Cr</th>
+                                <th style="width:10%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="scan-modal-actions">
+                <button type="button" class="btn-primary scan-apply-btn" onclick="window.applyAsPreviousOnly()">
+                    🎯 Set Previous CGPA & Add Next Sem
+                </button>
+                <button type="button" class="btn-secondary scan-populate-btn" onclick="window.applyAllScannedData()">
+                    📋 Populate All Subjects & Calculate
+                </button>
+                <button type="button" class="close-btn scan-close-btn" onclick="window.toggleModal('scanModal')">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="scaleModal" class="modal">
         <div class="modal-content">
             <h2>Grading Scale</h2>

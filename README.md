@@ -1,12 +1,24 @@
-🎓 Modern CGPA Calculator
+# 🎓 KFUEIT CGPA & SGPA Calculator
 
-![KFUEIT CGPA Calculator Demo](https://ahmedkhn143.github.io/CGPA-Calculator/preview-image.png)
+![KFUEIT CGPA Calculator Demo](preview-image.png)
 
-A visually stunning, fully responsive SGPA & CGPA Calculator built with modern web technologies. This project features a futuristic "Hyper-Neon" glassmorphism aesthetic, interactive particle backgrounds, and smooth animations to make grade calculation an engaging experience.
+A visually stunning, fully responsive SGPA & CGPA Calculator built specifically for students of **Khwaja Fareed University of Engineering & Information Technology (KFUEIT)**. This project features a futuristic "Hyper-Neon" glassmorphism aesthetic, interactive particle constellations, and an **AI-powered Transcript Scanner** to make grade calculation instant and effortless.
 
-✨ Features
+## ✨ Key Features
 
-Dynamic Calculation: Instantly calculates SGPA and CGPA based on Marks or Grades.
+### 📸 Smart AI Transcript Scanner (New!)
+- **Photo Upload & Camera Capture**: Upload any transcript photo, camera snapshot, or portal screenshot.
+- **Clipboard Paste Support**: Directly paste screenshots with `Ctrl + V` anywhere on the page.
+- **Smart Data Extraction**: Automatically detects:
+  - **Previous Total CGPA**
+  - **Total Completed Credit Hours**
+  - **Semester SGPA**
+  - **Student Name**
+  - **Individual Courses** (Marks, Grades, Credit Hours, and GP)
+- **Flexible Workflows**:
+  - **Option 1 (Previous Sem Mode)**: Import Previous CGPA & Credits with one click, then enter new/upcoming semester courses to compute updated CGPA and SGPA.
+  - **Option 2 (Full Auto-fill)**: Automatically populate all scanned subjects into the calculator and calculate instantly!
+- **⚡ Try Demo Test**: Test the OCR scanner instantly with a single click using a synthetic official KFUEIT sample transcript.
 
 Smart Input System:
 
