@@ -337,17 +337,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
+            gap: 10px;
             margin-bottom: 10px;
             position: relative;
+            flex-wrap: wrap;
         }
 
         /* Side Buttons */
         .side-btn {
             background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
             border: 1px solid var(--glass-border);
-            width: 55px; /* Mini */
-            height: 55px;
+            width: 52px; /* Mini */
+            height: 52px;
             border-radius: 14px;
             display: flex;
             flex-direction: column;
@@ -356,6 +357,7 @@
             color: rgba(255,255,255,0.6);
             transition: all 0.3s ease;
             cursor: pointer;
+            flex-shrink: 0;
         }
         
         .side-btn:hover {
@@ -363,6 +365,18 @@
             color: #fff;
             border-color: var(--accent-cyan);
             background: rgba(76, 201, 240, 0.1);
+        }
+
+        .side-btn-target:hover {
+            border-color: var(--primary-color) !important;
+            background: rgba(247, 37, 133, 0.15) !important;
+            box-shadow: 0 0 15px rgba(247, 37, 133, 0.3);
+        }
+
+        .side-btn-export:hover {
+            border-color: var(--success-color) !important;
+            background: rgba(0, 255, 153, 0.15) !important;
+            box-shadow: 0 0 15px rgba(0, 255, 153, 0.3);
         }
 
         .side-btn .icon { font-size: 1.2rem; margin-bottom: 2px; }
@@ -494,26 +508,27 @@
             /* Horizontal Dashboard on Mobile */
             .results-dashboard { 
                 flex-direction: row; 
-                gap: 10px; 
-                flex-wrap: nowrap; 
-                justify-content: space-between;
+                gap: 8px; 
+                flex-wrap: wrap; 
+                justify-content: center;
                 margin-bottom: 15px;
             }
             .progress-ring { 
-                width: 120px; 
-                height: 120px; 
-                margin: 0; /* No auto margin */
+                width: 110px; 
+                height: 110px; 
+                margin: 0 4px;
                 flex-shrink: 0;
             }
             .side-btn { 
-                width: 60px; 
-                height: 60px; 
+                width: 48px; 
+                height: 48px; 
                 flex-direction: column; 
-                gap: 2px; 
+                gap: 1px; 
                 flex-shrink: 0;
+                border-radius: 11px;
             }
-            .side-btn .icon { font-size: 1.2rem; margin-bottom: 0; }
-            .side-btn .label { display: block; font-size: 0.55rem; }
+            .side-btn .icon { font-size: 1rem; margin-bottom: 0; }
+            .side-btn .label { display: block; font-size: 0.48rem; }
             
             /* Card View for Main Table Only */
             #gradesTable, #gradesTable thead, #gradesTable tbody, #gradesTable th, #gradesTable td, #gradesTable tr { display: block; }
@@ -1226,8 +1241,202 @@
             .stats-grid {
                 grid-template-columns: 1fr;
             }
-            .stat-formula-card {
-                grid-column: span 1;
-            }
+        /* ====== Course Repeat Toggle ====== */
+        .repeat-toggle-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.65);
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+
+        .repeat-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        .repeat-toggle-btn.active {
+            background: rgba(255, 183, 3, 0.2);
+            border-color: #ffb703;
+            color: #ffb703;
+            box-shadow: 0 0 10px rgba(255, 183, 3, 0.35);
+        }
+
+        .prev-grade-select {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #ffb703;
+            color: #ffb703;
+            padding: 2px 4px;
+            border-radius: 5px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            margin-top: 3px;
+            outline: none;
+            width: 100%;
+        }
+
+        /* ====== Target CGPA Planner Modal ====== */
+        .modal-target-content {
+            max-width: 500px !important;
+            width: 95% !important;
+            text-align: left !important;
+            border-radius: 20px !important;
+            border: 1px solid rgba(247, 37, 133, 0.4) !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(247, 37, 133, 0.2) !important;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .target-modal-header {
+            text-align: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+        }
+
+        .target-modal-header h2 {
+            font-size: 1.3rem !important;
+            background: linear-gradient(135deg, #f72585, #4cc9f0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px !important;
+        }
+
+        .target-modal-sub {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .target-inputs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .target-input-field label {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .target-input-field input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 10px;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            color: #ffffff;
+        }
+
+        .target-input-field input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(247, 37, 133, 0.3);
+        }
+
+        .target-calc-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.82rem;
+            border-radius: 12px;
+            margin-bottom: 14px;
+        }
+
+        .target-result-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 14px;
+            animation: fadeIn 0.35s ease;
+        }
+
+        .target-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .target-req-badge {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            line-height: 1;
+        }
+
+        .target-status-pill {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .status-achievable {
+            background: rgba(0, 255, 153, 0.15);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+
+        .status-impossible {
+            background: rgba(255, 0, 85, 0.15);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+        }
+
+        .status-easy {
+            background: rgba(76, 201, 240, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+        }
+
+        .target-roadmap-card {
+            font-size: 0.75rem;
+            line-height: 1.55;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .target-roadmap-card strong {
+            color: var(--accent-cyan);
+        }
+
+        .target-stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .target-mini-stat {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+        }
+
+        .target-mini-stat span {
+            display: block;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.62rem;
+            text-transform: uppercase;
+        }
+
+        .target-mini-stat strong {
+            font-size: 0.9rem;
+            color: #ffffff;
         }
 

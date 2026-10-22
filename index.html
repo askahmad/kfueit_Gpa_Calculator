@@ -113,12 +113,13 @@
             <table id="gradesTable">
                 <thead>
                     <tr>
-                        <th style="width: 35%">Subject</th>
-                        <th style="width: 15%; text-align:center">Marks</th>
-                        <th style="width: 15%; text-align:center">Grade</th>
-                        <th style="width: 15%; text-align:center">Credit</th>
+                        <th style="width: 30%">Subject</th>
+                        <th style="width: 14%; text-align:center">Marks</th>
+                        <th style="width: 14%; text-align:center">Grade</th>
+                        <th style="width: 12%; text-align:center">Credit</th>
                         <th style="width: 10%; text-align:center">GP</th>
-                        <th style="width: 10%"></th>
+                        <th style="width: 15%; text-align:center">Type</th>
+                        <th style="width: 5%"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -135,9 +136,14 @@
 
         <!-- Dashboard -->
         <div class="results-dashboard">
-            <div class="side-btn" onclick="window.toggleModal('scaleModal')">
+            <div class="side-btn" onclick="window.toggleModal('scaleModal')" title="Grading Scale">
                 <span class="icon">📜</span>
                 <span class="label">Scale</span>
+            </div>
+
+            <div class="side-btn side-btn-target" onclick="window.openTargetModal()" title="Target CGPA Planner (What-If Simulator)">
+                <span class="icon">🎯</span>
+                <span class="label">Target</span>
             </div>
 
             <div class="progress-ring" id="progressRing">
@@ -147,9 +153,14 @@
                 </div>
             </div>
 
-            <div class="side-btn" onclick="window.toggleModal('converterModal')">
+            <div class="side-btn" onclick="window.toggleModal('converterModal')" title="Quick Grade Converter">
                 <span class="icon">🔄</span>
                 <span class="label">Convert</span>
+            </div>
+
+            <div class="side-btn side-btn-export" onclick="window.exportResultCard()" title="Download Official Result Card (HD Image)">
+                <span class="icon">📥</span>
+                <span class="label">Export</span>
             </div>
         </div>
 
@@ -331,6 +342,44 @@
             </div>
             <div id="convResult"></div>
             <button class="close-btn" onclick="window.toggleModal('converterModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Target CGPA Planner Modal -->
+    <div id="targetModal" class="modal">
+        <div class="modal-content modal-target-content">
+            <div class="target-modal-header">
+                <h2>🎯 Target CGPA Planner</h2>
+                <p class="target-modal-sub">Simulate required SGPA and grades to reach your target CGPA</p>
+            </div>
+
+            <div class="target-inputs-grid">
+                <div class="target-input-field">
+                    <label>Current CGPA</label>
+                    <input type="number" id="planCurrentCGPA" step="0.01" min="0" max="4" placeholder="e.g. 2.85">
+                </div>
+                <div class="target-input-field">
+                    <label>Completed Credits</label>
+                    <input type="number" id="planCompletedCredits" step="1" min="0" placeholder="e.g. 64">
+                </div>
+                <div class="target-input-field">
+                    <label>Desired Target CGPA</label>
+                    <input type="number" id="planTargetCGPA" step="0.01" min="0" max="4" placeholder="e.g. 3.25">
+                </div>
+                <div class="target-input-field">
+                    <label>Upcoming Sem Credits</label>
+                    <input type="number" id="planUpcomingCredits" step="1" min="1" max="30" value="15" placeholder="e.g. 15">
+                </div>
+            </div>
+
+            <button type="button" class="btn-primary target-calc-btn" onclick="window.calculateTargetPlan()">
+                ⚡ Analyze Target Roadmap
+            </button>
+
+            <!-- Target Analysis Result Container -->
+            <div id="targetResultBox" class="target-result-box" style="display: none;"></div>
+
+            <button type="button" class="close-btn" onclick="window.toggleModal('targetModal')">Close</button>
         </div>
     </div>
 

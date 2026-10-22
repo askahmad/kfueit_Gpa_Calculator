@@ -24,31 +24,35 @@ A visually stunning, fully responsive SGPA & CGPA Calculator built specifically 
   - **Option 2 (Full Auto-fill)**: Automatically populate all scanned subjects into the calculator and calculate instantly!
 - **⚡ Try Demo Test**: Test both **Demo PDF** and **Demo Photo** instantly with a single click using official KFUEIT sample records.
 
-Smart Input System:
+### 🎯 Target CGPA Planner ("What-If" Simulator)
+- Input your **Desired Target CGPA** (e.g. `3.50`).
+- Automatically computes the exact minimum **Semester SGPA** required across your upcoming credit hours.
+- Evaluates feasibility: Shows whether the goal is achievable, suggests recommended grade targets (e.g., "Mix of A and B+"), or calculates how many future semesters at 4.00 are required.
 
-Enter Marks (0-100) to auto-generate Grade and GPA.
+### 🔁 Course Repeat / Grade Improvement Mode (KFUEIT Policy)
+- Toggle any course as **Repeat** with a single click.
+- Select the previously earned grade (e.g., `Prev: F (0.0)` or `Prev: D (1.0)`).
+- Automatically replaces old grade points with new grade points in cumulative CGPA calculation without duplicating completed credit hours.
 
-Enter Grade (e.g., A+, B) to auto-fetch the GPA.
+### 📥 Official Result Card Export (HD Image)
+- Export your semester calculation as a high-definition branded KFUEIT provisional result card.
+- Includes Student Name, SGPA & CGPA badges, complete course breakdown, academic standing, and date stamp.
 
-Immersive UI/UX:
+### 💡 Smart Input System
+- Enter Marks (0-100) to auto-generate Grade and GPA.
+- Enter Grade (e.g., A+, B) to auto-fetch the GPA.
 
-"Electric Aurora" Theme: Deep gradient backgrounds with neon accents.
+### 🎨 Immersive UI/UX
+- "Electric Aurora" Theme: Deep gradient backgrounds with neon accents.
+- Glassmorphism: Frosted glass cards and containers.
+- Interactive Background: Particle constellation effect that reacts to mouse movement.
+- Celebration Mode: Confetti explosion for outstanding results (GPA ≥ 3.5).
+- Animated Results: Count-up numbers and dynamic progress rings.
+- Fully Responsive: Optimized for all devices with card transformation on mobile.
 
-Glassmorphism: Frosted glass cards and containers.
-
-Interactive Background: Particle constellation effect that reacts to mouse movement.
-
-Celebration Mode: Confetti explosion for outstanding results (GPA ≥ 3.5).
-
-Animated Results: Count-up numbers and dynamic progress rings.
-
-Fully Responsive: optimized for all devices. Tables transform into elegant cards on mobile screens for better usability.
-
-Utility Tools:
-
-Grading Scale Modal: View the complete marks-to-grade mapping.
-
-Quick Converter: Convert specific grades to marks (and vice-versa) without altering your main calculation.
+### 🛠️ Utility Tools
+- **Grading Scale Modal**: View the complete marks-to-grade mapping.
+- **Quick Converter**: Convert specific grades to marks (and vice-versa).
 
 🛠️ Tech Stack
 

@@ -42,24 +42,63 @@
                 for(let i=0; i<4; i++) window.addRow();
             };
 
-            window.addRow = function() {
+            window.addRow = function(data = {}) {
                 const tbody = document.querySelector("#gradesTable tbody");
                 const tr = document.createElement("tr");
+                const isRepeat = !!data.isRepeat;
+                const prevGrade = data.prevGrade || 'F';
                 tr.innerHTML = `
-                    <td><input type="text" class="subject-input" placeholder="Subject Name"></td>
-                    <td><span class="card-label">Marks</span><input type="number" class="marks-input" placeholder="0-100" min="0" max="100" oninput="window.handleInput(this, 'marks')"></td>
-                    <td><span class="card-label">Grade</span><input type="text" class="grade-input" placeholder="Grd" oninput="window.handleInput(this, 'grade')"></td>
-                    <td><span class="card-label">Credit</span><input type="number" class="credits-input" placeholder="Cr" min="1" max="6" value="3"></td>
+                    <td><input type="text" class="subject-input" placeholder="Subject Name" value="${data.title || ''}"></td>
+                    <td><span class="card-label">Marks</span><input type="number" class="marks-input" placeholder="0-100" min="0" max="100" value="${data.marks || ''}" oninput="window.handleInput(this, 'marks')"></td>
+                    <td><span class="card-label">Grade</span><input type="text" class="grade-input" placeholder="Grd" value="${data.grade || ''}" oninput="window.handleInput(this, 'grade')"></td>
+                    <td><span class="card-label">Credit</span><input type="number" class="credits-input" placeholder="Cr" min="1" max="6" value="${data.credits || 3}"></td>
                     <td><span class="gp-display">-</span></td>
+                    <td style="text-align:center;">
+                        <button type="button" class="repeat-toggle-btn ${isRepeat ? 'active' : ''}" onclick="window.toggleRepeat(this)" title="Toggle Course Repeat / Grade Improvement">
+                            ${isRepeat ? '🔁 Repeat' : '🔁 Normal'}
+                        </button>
+                        <div class="repeat-select-wrapper" style="${isRepeat ? 'display:block;' : 'display:none;'}">
+                            <select class="prev-grade-select" title="Select previously earned grade" onchange="window.calculateResult()">
+                                <option value="F" ${prevGrade === 'F' ? 'selected' : ''}>Prev: F (0.0)</option>
+                                <option value="D" ${prevGrade === 'D' ? 'selected' : ''}>Prev: D (1.0)</option>
+                                <option value="D+" ${prevGrade === 'D+' ? 'selected' : ''}>Prev: D+ (1.3)</option>
+                                <option value="C-" ${prevGrade === 'C-' ? 'selected' : ''}>Prev: C- (1.7)</option>
+                                <option value="C" ${prevGrade === 'C' ? 'selected' : ''}>Prev: C (2.0)</option>
+                                <option value="C+" ${prevGrade === 'C+' ? 'selected' : ''}>Prev: C+ (2.3)</option>
+                                <option value="B-" ${prevGrade === 'B-' ? 'selected' : ''}>Prev: B- (2.7)</option>
+                                <option value="B" ${prevGrade === 'B' ? 'selected' : ''}>Prev: B (3.0)</option>
+                            </select>
+                        </div>
+                    </td>
                     <td style="text-align:center; cursor:pointer; color:var(--danger-color); font-weight:bold; font-size:1.2rem;" onclick="window.removeRow(this)">×</td>
                 `;
                 tbody.appendChild(tr);
+
+                const rowMarks = tr.querySelector('.marks-input');
+                const rowGrade = tr.querySelector('.grade-input');
+                if (data.marks) window.handleInput(rowMarks, 'marks');
+                else if (data.grade) window.handleInput(rowGrade, 'grade');
+            };
+
+            window.toggleRepeat = function(btn) {
+                const wrapper = btn.nextElementSibling;
+                btn.classList.toggle('active');
+                if (btn.classList.contains('active')) {
+                    btn.textContent = '🔁 Repeat';
+                    wrapper.style.display = 'block';
+                    window.showToast('🔁 Course marked as Repeat. Select previously earned grade.', 'info', 2500);
+                } else {
+                    btn.textContent = '🔁 Normal';
+                    wrapper.style.display = 'none';
+                }
+                window.calculateResult();
             };
 
             window.removeRow = function(btn) {
                 const row = btn.parentNode;
                 if(document.querySelectorAll("#gradesTable tbody tr").length > 1) row.remove();
                 else { row.querySelectorAll('input').forEach(i => i.value = ''); row.querySelector('.gp-display').textContent = '-'; }
+                window.calculateResult();
             };
 
             window.handleInput = function(input, type) {
@@ -91,17 +130,32 @@
                 }
             };
 
-            /* ====== Calculation Engine (100% Accurate KFUEIT Math) ====== */
+            /* ====== Calculation Engine (100% Accurate KFUEIT Math & Repeat Policy) ====== */
             window.calculateResult = function() {
                 const rows = document.querySelectorAll("#gradesTable tbody tr");
                 let semPoints = 0, semCredits = 0;
+                let repeatCoursesCount = 0;
+                let repeatCredits = 0;
+                let repeatOldPoints = 0;
+                let repeatPointDelta = 0;
 
                 rows.forEach(row => {
                     const credits = parseFloat(row.querySelector(".credits-input").value);
                     const gp = parseFloat(row.querySelector(".gp-display").textContent);
+                    const isRepeat = row.querySelector(".repeat-toggle-btn")?.classList.contains('active');
+                    const prevGrade = row.querySelector(".prev-grade-select")?.value || 'F';
+                    const oldGP = GRADE_MAP[prevGrade] !== undefined ? GRADE_MAP[prevGrade] : 0.0;
+
                     if (!isNaN(credits) && !isNaN(gp) && credits > 0) {
                         semPoints += (gp * credits);
                         semCredits += credits;
+
+                        if (isRepeat) {
+                            repeatCoursesCount++;
+                            repeatCredits += credits;
+                            repeatOldPoints += (oldGP * credits);
+                            repeatPointDelta += ((gp - oldGP) * credits);
+                        }
                     }
                 });
 
@@ -110,12 +164,21 @@
                 const prevCredits = parseFloat(document.getElementById("prevCredits").value) || 0;
                 
                 const prevPoints = prevCGPA * prevCredits;
-                const totalPoints = prevPoints + semPoints;
-                const totalCredits = prevCredits + semCredits;
+                // Repeat credits do not inflate completed credits
+                const newCreditsCompleted = Math.max(0, semCredits - repeatCredits);
+                const totalCredits = prevCredits + newCreditsCompleted;
+
+                // When repeating courses, the old grade points are replaced by new grade points:
+                let effectiveTotalPoints = 0;
+                if (prevCredits > 0) {
+                    effectiveTotalPoints = (prevPoints - repeatOldPoints) + semPoints;
+                } else {
+                    effectiveTotalPoints = semPoints;
+                }
 
                 let finalGPA = 0, label = "SGPA";
                 if (totalCredits > 0) {
-                    finalGPA = totalPoints / totalCredits;
+                    finalGPA = effectiveTotalPoints / totalCredits;
                     label = prevCredits > 0 ? "CGPA" : "SGPA";
                 }
 
@@ -126,7 +189,10 @@
                     prevCGPA,
                     prevPoints,
                     totalCredits,
-                    totalPoints
+                    totalPoints: effectiveTotalPoints,
+                    repeatCoursesCount,
+                    repeatCredits,
+                    repeatPointDelta
                 });
             };
 
@@ -180,13 +246,22 @@
                     if (stats.prevCredits > 0 && stats.semCredits > 0) {
                         formulaHtml = `
                             <div class="stat-formula-card">
-                                <strong>Formula:</strong> (Prev Points [${stats.prevPoints.toFixed(2)}] + Sem Points [${stats.semPoints.toFixed(2)}]) ÷ Total Credits [${stats.totalCredits}] = <strong>${gpa} CGPA</strong>
+                                <strong>Formula:</strong> Total Quality Points [${stats.totalPoints.toFixed(2)}] ÷ Completed Credits [${stats.totalCredits}] = <strong>${gpa} CGPA</strong>
                             </div>
                         `;
                     } else if (stats.semCredits > 0) {
                         formulaHtml = `
                             <div class="stat-formula-card">
                                 <strong>Semester Formula:</strong> Quality Points [${stats.semPoints.toFixed(2)}] ÷ Credits [${stats.semCredits}] = <strong>${sgpa} SGPA</strong>
+                            </div>
+                        `;
+                    }
+
+                    let repeatNoteHtml = '';
+                    if (stats.repeatCoursesCount > 0) {
+                        repeatNoteHtml = `
+                            <div class="stat-formula-card" style="border-color:#ffb703; background:rgba(255,183,3,0.09); color:#ffb703;">
+                                🔁 <strong>${stats.repeatCoursesCount} Course Repeat:</strong> Old grade points replaced. Net Quality Point Gain: <strong>+${stats.repeatPointDelta.toFixed(2)}</strong> (Credits not duplicated).
                             </div>
                         `;
                     }
@@ -210,8 +285,9 @@
                         <div class="stat-card">
                             <div class="stat-card-title">Completed Credits</div>
                             <div class="stat-card-val">${stats.totalCredits}</div>
-                            <div class="stat-card-sub">${stats.prevCredits} Previous + ${stats.semCredits} New</div>
+                            <div class="stat-card-sub">${stats.prevCredits} Prev + ${stats.semCredits - stats.repeatCredits} New</div>
                         </div>
+                        ${repeatNoteHtml}
                         ${formulaHtml}
                     `;
                 } else {
@@ -772,21 +848,7 @@
                         const grade = gradeInput.value.trim().toUpperCase();
                         const cr = crInput.value.trim() || 3;
 
-                        const tr = document.createElement("tr");
-                        tr.innerHTML = `
-                            <td><input type="text" class="subject-input" placeholder="Subject" value="${title}"></td>
-                            <td><span class="card-label">Marks</span><input type="number" class="marks-input" placeholder="0-100" min="0" max="100" value="${marks}" oninput="window.handleInput(this, 'marks')"></td>
-                            <td><span class="card-label">Grade</span><input type="text" class="grade-input" placeholder="Grd" value="${grade}" oninput="window.handleInput(this, 'grade')"></td>
-                            <td><span class="card-label">Credit</span><input type="number" class="credits-input" placeholder="Cr" min="1" max="6" value="${cr}"></td>
-                            <td><span class="gp-display">-</span></td>
-                            <td style="text-align:center; cursor:pointer; color:var(--danger-color); font-weight:bold; font-size:1.2rem;" onclick="window.removeRow(this)">×</td>
-                        `;
-                        tbody.appendChild(tr);
-
-                        const rowMarks = tr.querySelector('.marks-input');
-                        const rowGrade = tr.querySelector('.grade-input');
-                        if (marks) window.handleInput(rowMarks, 'marks');
-                        else if (grade) window.handleInput(rowGrade, 'grade');
+                        window.addRow({ title, marks, grade, credits: cr });
                     });
                 }
 
@@ -995,6 +1057,340 @@
                     document.getElementById('convResult').textContent = `Grade: ${s.grade} | GP: ${s.gp.toFixed(2)}`;
                 } else document.getElementById('convResult').textContent = '';
             });
+
+            /* ====== Target CGPA Planner ("What-If" Simulator) ====== */
+            window.openTargetModal = function() {
+                const prevCGPA = parseFloat(document.getElementById("prevCGPA").value);
+                const prevCredits = parseFloat(document.getElementById("prevCredits").value);
+                
+                // Calculate current semester credits from table
+                let semCredits = 0;
+                document.querySelectorAll("#gradesTable tbody tr").forEach(row => {
+                    const c = parseFloat(row.querySelector(".credits-input")?.value);
+                    if (!isNaN(c) && c > 0) semCredits += c;
+                });
+
+                if (!isNaN(prevCGPA)) document.getElementById("planCurrentCGPA").value = prevCGPA.toFixed(2);
+                if (!isNaN(prevCredits)) document.getElementById("planCompletedCredits").value = Math.round(prevCredits);
+                if (semCredits > 0) document.getElementById("planUpcomingCredits").value = semCredits;
+
+                window.toggleModal('targetModal');
+            };
+
+            window.calculateTargetPlan = function() {
+                const currentCGPA = parseFloat(document.getElementById("planCurrentCGPA").value) || 0;
+                const completedCredits = parseFloat(document.getElementById("planCompletedCredits").value) || 0;
+                const targetCGPA = parseFloat(document.getElementById("planTargetCGPA").value);
+                const upcomingCredits = parseFloat(document.getElementById("planUpcomingCredits").value) || 15;
+
+                const resultBox = document.getElementById("targetResultBox");
+                if (isNaN(targetCGPA) || targetCGPA <= 0 || targetCGPA > 4.0) {
+                    window.showToast('Please enter a valid Target CGPA between 0.01 and 4.00.', 'error');
+                    return;
+                }
+
+                if (completedCredits <= 0) {
+                    resultBox.style.display = 'block';
+                    resultBox.innerHTML = `
+                        <div class="target-result-header">
+                            <div>
+                                <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); text-transform:uppercase;">Required Semester SGPA</div>
+                                <div class="target-req-badge">${targetCGPA.toFixed(2)}</div>
+                            </div>
+                            <div class="target-status-pill status-achievable">First Semester</div>
+                        </div>
+                        <div class="target-roadmap-card">
+                            As this is your first semester, simply score <strong>${targetCGPA.toFixed(2)} SGPA</strong> to attain your target CGPA of <strong>${targetCGPA.toFixed(2)}</strong>!
+                        </div>
+                    `;
+                    return;
+                }
+
+                const totalCredits = completedCredits + upcomingCredits;
+                const targetTotalPoints = targetCGPA * totalCredits;
+                const currentPoints = currentCGPA * completedCredits;
+                const reqSemPoints = targetTotalPoints - currentPoints;
+                const reqSGPA = reqSemPoints / upcomingCredits;
+                const maxPossibleCGPA = (currentPoints + 4.0 * upcomingCredits) / totalCredits;
+
+                let statusClass = 'status-achievable';
+                let statusText = 'Achievable 🚀';
+                let roadmapHtml = '';
+
+                if (reqSGPA > 4.0) {
+                    statusClass = 'status-impossible';
+                    statusText = 'Needs More Semesters ⚠️';
+                    
+                    let semestersAt4 = 'N/A';
+                    if (targetCGPA < 4.0) {
+                        const creditsNeeded = (completedCredits * (targetCGPA - currentCGPA)) / (4.0 - targetCGPA);
+                        semestersAt4 = Math.ceil(creditsNeeded / upcomingCredits);
+                    }
+
+                    roadmapHtml = `
+                        Target CGPA of <strong>${targetCGPA.toFixed(2)}</strong> cannot be achieved in a single semester of ${upcomingCredits} credits (would require an impossible SGPA of <strong>${reqSGPA.toFixed(2)}</strong>).
+                        <br><br>
+                        • <strong>Max CGPA Possible this semester (at 4.00 SGPA):</strong> <strong>${maxPossibleCGPA.toFixed(2)}</strong>
+                        <br>
+                        • <strong>Roadmap:</strong> You need approximately <strong>${semestersAt4} semester(s)</strong> with straight <strong>4.00 SGPA</strong> to reach <strong>${targetCGPA.toFixed(2)} CGPA</strong>.
+                    `;
+                } else if (reqSGPA <= 0.0) {
+                    statusClass = 'status-easy';
+                    statusText = 'Already Maintained ✅';
+                    roadmapHtml = `
+                        Your target of <strong>${targetCGPA.toFixed(2)}</strong> is already below your current CGPA of <strong>${currentCGPA.toFixed(2)}</strong>. Even with minimal passing performance, your CGPA will stay above target.
+                    `;
+                } else {
+                    statusClass = reqSGPA >= 3.7 ? 'status-impossible' : 'status-achievable';
+                    statusText = reqSGPA >= 3.7 ? 'High Target 🔥' : 'Achievable 🚀';
+
+                    let suggestedGrades = 'Mix of A and B+';
+                    if (reqSGPA >= 3.85) suggestedGrades = 'Straight A+ / A in all subjects';
+                    else if (reqSGPA >= 3.5) suggestedGrades = 'Mostly A (86%+) and A- (80%+)';
+                    else if (reqSGPA >= 3.0) suggestedGrades = 'Mostly B (72%+) and B+ (76%+)';
+                    else suggestedGrades = 'Mix of C+ and B grades';
+
+                    roadmapHtml = `
+                        To achieve your target CGPA of <strong>${targetCGPA.toFixed(2)}</strong>, you must score an SGPA of at least <strong>${reqSGPA.toFixed(2)}</strong> across your upcoming <strong>${upcomingCredits} credit hours</strong>.
+                        <br><br>
+                        • <strong>Suggested Target:</strong> ${suggestedGrades}
+                        <br>
+                        • <strong>Max CGPA achievable this semester:</strong> <strong>${maxPossibleCGPA.toFixed(2)}</strong> (if you achieve 4.00)
+                    `;
+                }
+
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = `
+                    <div class="target-result-header">
+                        <div>
+                            <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); text-transform:uppercase;">Required Semester SGPA</div>
+                            <div class="target-req-badge" style="color:${reqSGPA > 4.0 ? 'var(--danger-color)' : (reqSGPA >= 3.5 ? 'var(--primary-color)' : 'var(--accent-cyan)')}">
+                                ${reqSGPA > 4.0 ? '> 4.00' : Math.max(0, reqSGPA).toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="target-status-pill ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="target-roadmap-card">
+                        ${roadmapHtml}
+                    </div>
+                    <div class="target-stats-row">
+                        <div class="target-mini-stat">
+                            <span>Max CGPA in 1 Sem</span>
+                            <strong>${maxPossibleCGPA.toFixed(2)}</strong>
+                        </div>
+                        <div class="target-mini-stat">
+                            <span>Total Credits After Sem</span>
+                            <strong>${totalCredits} Cr</strong>
+                        </div>
+                    </div>
+                `;
+            };
+
+            /* ====== Official KFUEIT Result Card Generator & Export ====== */
+            window.exportResultCard = function() {
+                const rows = document.querySelectorAll("#gradesTable tbody tr");
+                const courses = [];
+                rows.forEach(r => {
+                    const title = r.querySelector(".subject-input")?.value.trim() || 'Untitled Subject';
+                    const marks = r.querySelector(".marks-input")?.value.trim();
+                    const grade = r.querySelector(".grade-input")?.value.trim().toUpperCase();
+                    const cr = parseFloat(r.querySelector(".credits-input")?.value) || 3;
+                    const gp = r.querySelector(".gp-display")?.textContent.trim();
+                    const isRepeat = r.querySelector(".repeat-toggle-btn")?.classList.contains('active');
+                    if (grade && gp && gp !== '-') {
+                        courses.push({ title, marks: marks || '-', grade, cr, gp, isRepeat });
+                    }
+                });
+
+                if (courses.length === 0) {
+                    window.showToast('Please enter at least 1 course and calculate GPA before exporting.', 'error');
+                    return;
+                }
+
+                window.showToast('Generating official KFUEIT HD result card...', 'info', 2000);
+
+                const studentName = document.getElementById("studentName")?.value.trim() || "KFUEIT Student";
+                const displayGPA = document.getElementById("displayGPA")?.textContent || "0.00";
+                const displayLabel = document.getElementById("displayLabel")?.textContent || "GPA";
+
+                let semPoints = 0, semCredits = 0;
+                courses.forEach(c => {
+                    semPoints += (parseFloat(c.gp) * c.cr);
+                    semCredits += c.cr;
+                });
+                const sgpa = semCredits > 0 ? (semPoints / semCredits).toFixed(2) : "0.00";
+
+                // Setup Canvas (1100px width for crystal-clear HD export)
+                const canvas = document.createElement("canvas");
+                const courseRowHeight = 44;
+                const canvasWidth = 1100;
+                const canvasHeight = 650 + (courses.length * courseRowHeight);
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                const ctx = canvas.getContext("2d");
+
+                // Deep Midnight Gradient Background
+                const bgGrad = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+                bgGrad.addColorStop(0, '#0a0a1a');
+                bgGrad.addColorStop(0.5, '#0e112a');
+                bgGrad.addColorStop(1, '#070814');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // Neon Cyber Border Glow
+                ctx.strokeStyle = '#4cc9f0';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(20, 20, canvasWidth - 40, canvasHeight - 40);
+                ctx.strokeStyle = 'rgba(247, 37, 133, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(26, 26, canvasWidth - 52, canvasHeight - 52);
+
+                // Header Banner
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 24px Outfit, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('KHWAJA FAREED UNIVERSITY OF ENGINEERING & IT', canvasWidth / 2, 75);
+
+                ctx.fillStyle = '#4cc9f0';
+                ctx.font = '700 15px Outfit, Arial, sans-serif';
+                ctx.fillText('OFFICIAL SEMESTER RESULT TRANSCRIPT CARD', canvasWidth / 2, 105);
+
+                // Student Details Box
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+                ctx.fillRect(50, 130, canvasWidth - 100, 70);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.strokeRect(50, 130, canvasWidth - 100, 70);
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '600 18px Outfit, Arial, sans-serif';
+                ctx.fillText(`Student: ${studentName}`, 70, 162);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.font = '14px Outfit, Arial, sans-serif';
+                const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                ctx.fillText(`Date Generated: ${dateStr} • KFUEIT Grading Policy`, 70, 185);
+
+                // Dual GPA Rings / Badges
+                const cardWidth = 180, cardHeight = 70;
+                const sgpaCardX = canvasWidth - 430;
+                ctx.fillStyle = 'rgba(76, 201, 240, 0.12)';
+                ctx.fillRect(sgpaCardX, 130, cardWidth, cardHeight);
+                ctx.strokeStyle = '#4cc9f0';
+                ctx.strokeRect(sgpaCardX, 130, cardWidth, cardHeight);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#4cc9f0';
+                ctx.font = '700 12px Outfit, Arial, sans-serif';
+                ctx.fillText('SEMESTER SGPA', sgpaCardX + (cardWidth / 2), 152);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 24px Outfit, Arial, sans-serif';
+                ctx.fillText(sgpa, sgpaCardX + (cardWidth / 2), 183);
+
+                // CGPA Card
+                const cgpaCardX = canvasWidth - 230;
+                ctx.fillStyle = 'rgba(247, 37, 133, 0.12)';
+                ctx.fillRect(cgpaCardX, 130, cardWidth, cardHeight);
+                ctx.strokeStyle = '#f72585';
+                ctx.strokeRect(cgpaCardX, 130, cardWidth, cardHeight);
+
+                ctx.fillStyle = '#f72585';
+                ctx.font = '700 12px Outfit, Arial, sans-serif';
+                ctx.fillText(displayLabel === 'CGPA' ? 'CUMULATIVE CGPA' : 'FINAL GPA', cgpaCardX + (cardWidth / 2), 152);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 24px Outfit, Arial, sans-serif';
+                ctx.fillText(displayGPA, cgpaCardX + (cardWidth / 2), 183);
+
+                // Table Header
+                const startY = 230;
+                ctx.fillStyle = 'rgba(76, 201, 240, 0.18)';
+                ctx.fillRect(50, startY, canvasWidth - 100, 38);
+                ctx.strokeStyle = 'rgba(76, 201, 240, 0.4)';
+                ctx.strokeRect(50, startY, canvasWidth - 100, 38);
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#4cc9f0';
+                ctx.font = '700 14px Outfit, Arial, sans-serif';
+                ctx.fillText('Course Title', 70, startY + 24);
+                ctx.textAlign = 'center';
+                ctx.fillText('Cr. Hrs', 630, startY + 24);
+                ctx.fillText('Marks', 740, startY + 24);
+                ctx.fillText('Grade', 840, startY + 24);
+                ctx.fillText('GP', 930, startY + 24);
+                ctx.fillText('Status', 1010, startY + 24);
+
+                // Course Rows
+                courses.forEach((c, idx) => {
+                    const rowY = startY + 38 + (idx * courseRowHeight);
+                    ctx.fillStyle = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.05)';
+                    ctx.fillRect(50, rowY, canvasWidth - 100, courseRowHeight);
+
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '500 15px Outfit, Arial, sans-serif';
+                    ctx.fillText(c.title.length > 45 ? c.title.substring(0, 45) + '...' : c.title, 70, rowY + 27);
+
+                    ctx.textAlign = 'center';
+                    ctx.fillText(c.cr, 630, rowY + 27);
+                    ctx.fillText(c.marks, 740, rowY + 27);
+                    
+                    ctx.font = '700 15px Outfit, Arial, sans-serif';
+                    ctx.fillStyle = (parseFloat(c.gp) >= 3.0) ? '#00ff99' : (parseFloat(c.gp) < 2.0 ? '#ff0055' : '#ffb703');
+                    ctx.fillText(c.grade, 840, rowY + 27);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '500 15px Outfit, Arial, sans-serif';
+                    ctx.fillText(c.gp, 930, rowY + 27);
+
+                    if (c.isRepeat) {
+                        ctx.fillStyle = '#ffb703';
+                        ctx.font = '700 12px Outfit, Arial, sans-serif';
+                        ctx.fillText('🔁 Repeat', 1010, rowY + 27);
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.font = '13px Outfit, Arial, sans-serif';
+                        ctx.fillText('Regular', 1010, rowY + 27);
+                    }
+                });
+
+                // Summary Footer Bar
+                const footerY = startY + 38 + (courses.length * courseRowHeight) + 15;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fillRect(50, footerY, canvasWidth - 100, 50);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.strokeRect(50, footerY, canvasWidth - 100, 50);
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '600 14px Outfit, Arial, sans-serif';
+                ctx.fillText(`Semester Credits: ${semCredits}  •  Quality Points: ${semPoints.toFixed(2)}  •  Courses: ${courses.length}`, 70, footerY + 30);
+
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#4cc9f0';
+                ctx.fillText(`Academic Standing: ${parseFloat(displayGPA) >= 3.0 ? 'Good Standing 🌟' : 'Warning 📚'}`, canvasWidth - 70, footerY + 30);
+
+                // Watermark Signature
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.font = 'italic 12px Outfit, Arial, sans-serif';
+                ctx.fillText('Calculated via KFUEIT CGPA Calculator • Designed & Developed by Ahmad Khan', canvasWidth / 2, canvasHeight - 35);
+
+                // Convert to blob and download
+                canvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    const filename = studentName ? `KFUEIT_Result_${studentName.replace(/\s+/g, '_')}.png` : 'KFUEIT_Result_Card.png';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        window.showToast('📥 Official Result Card downloaded in High Definition!', 'success', 4000);
+                    }, 200);
+                }, 'image/png');
+            };
 
 
             /* Visuals */
