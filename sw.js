@@ -3,7 +3,7 @@
    Provides 100% Offline Capability, Asset Caching, and Fast Loading
    ========================================================= */
 
-const CACHE_NAME = 'kfueit-cgpa-v1.0.0';
+const CACHE_NAME = 'kfueit-cgpa-v1.1.0';
 
 // Core assets to pre-cache immediately on install
 const PRECACHE_ASSETS = [

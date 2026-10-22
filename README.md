@@ -44,6 +44,14 @@ A visually stunning, fully responsive SGPA & CGPA Calculator built specifically 
 - **Offline Mode Indicator**: Real-time status banner notifying when you are working offline.
 - **App-like Experience**: Full-screen standalone mode with custom high-resolution icons (192x192, 512x512, maskable) and safe-area adjustments for modern notched smartphones.
 
+### 📱 Senior-Grade Native Mobile Experience
+- **Floating Glass Bottom Action Dock**: Native mobile navigation bar with frosted glass blur (`backdrop-filter: blur(30px)`), quick tabs (Add, Scan, Calc, Target, Scale), and an elevated pulsing hero center trigger.
+- **Live GPA Mini Scorecard Pill**: Floating dynamic mini widget above the dock showing real-time SGPA and CGPA with smooth scroll-to-result tap interaction.
+- **Native iOS/Android Bottom Sheets**: All modals (Target Simulator, Scale, Converter, and Scanner Review) transform into native bottom sheets with tactile grabber pills and spring slide-up animations.
+- **Tactile Subject Glass Cards**: Grid transformed into neat mobile cards with automated `Course #` chip counters, touch-optimized inputs, and circular frosted delete triggers.
+- **Native Haptic Vibration Feedback Engine**: Physical tactile haptic vibration (`navigator.vibrate`) on adding subjects, toggling repeats, deleting courses, and calculating results.
+- **Automatic Numeric Keypad Mapping**: `inputmode="decimal"` and `inputmode="numeric"` configured across marks, credits, and CGPA inputs so smartphones open directly into the decimal numeric keypad without manual switching.
+
 ### 💡 Smart Input System
 - Enter Marks (0-100) to auto-generate Grade and GPA.
 - Enter Grade (e.g., A+, B) to auto-fetch the GPA.

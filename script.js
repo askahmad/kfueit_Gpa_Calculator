@@ -16,8 +16,19 @@
                 if (marks >= 57) return { grade: 'C-', gp: 1.7 };
                 if (marks >= 54) return { grade: 'D+', gp: 1.3 };
                 if (marks >= 50) return { grade: 'D', gp: 1.0 };
-                return { grade: 'F', gp: 0.0 };
             }
+
+            /* ====== Native Mobile Haptic Feedback Engine ====== */
+            window.haptic = function(type = 'light') {
+                if ('vibrate' in navigator) {
+                    try {
+                        if (type === 'light') navigator.vibrate(12);
+                        else if (type === 'medium') navigator.vibrate(24);
+                        else if (type === 'success') navigator.vibrate([15, 35, 20]);
+                        else if (type === 'warning') navigator.vibrate([25, 30, 25]);
+                    } catch(e) {}
+                }
+            };
 
             /* ====== Toast Notification System ====== */
             window.showToast = function(msg, type = 'info', duration = 3500) {
@@ -43,22 +54,23 @@
             };
 
             window.addRow = function(data = {}) {
+                window.haptic('light');
                 const tbody = document.querySelector("#gradesTable tbody");
                 const tr = document.createElement("tr");
                 const isRepeat = !!data.isRepeat;
                 const prevGrade = data.prevGrade || 'F';
                 tr.innerHTML = `
-                    <td><input type="text" class="subject-input" placeholder="Subject Name" value="${data.title || ''}"></td>
-                    <td><span class="card-label">Marks</span><input type="number" class="marks-input" placeholder="0-100" min="0" max="100" value="${data.marks || ''}" oninput="window.handleInput(this, 'marks')"></td>
-                    <td><span class="card-label">Grade</span><input type="text" class="grade-input" placeholder="Grd" value="${data.grade || ''}" oninput="window.handleInput(this, 'grade')"></td>
-                    <td><span class="card-label">Credit</span><input type="number" class="credits-input" placeholder="Cr" min="1" max="6" value="${data.credits || 3}"></td>
+                    <td><input type="text" class="subject-input" placeholder="Subject Name" value="${data.title || ''}" spellcheck="false"></td>
+                    <td><span class="card-label">Marks</span><input type="number" inputmode="decimal" class="marks-input" placeholder="0-100" min="0" max="100" value="${data.marks || ''}" oninput="window.handleInput(this, 'marks')"></td>
+                    <td><span class="card-label">Grade</span><input type="text" autocapitalize="characters" class="grade-input" placeholder="Grd" value="${data.grade || ''}" oninput="window.handleInput(this, 'grade')"></td>
+                    <td><span class="card-label">Credit</span><input type="number" inputmode="numeric" class="credits-input" placeholder="Cr" min="1" max="6" value="${data.credits || 3}"></td>
                     <td><span class="gp-display">-</span></td>
                     <td style="text-align:center;">
                         <button type="button" class="repeat-toggle-btn ${isRepeat ? 'active' : ''}" onclick="window.toggleRepeat(this)" title="Toggle Course Repeat / Grade Improvement">
                             ${isRepeat ? '🔁 Repeat' : '🔁 Normal'}
                         </button>
                         <div class="repeat-select-wrapper" style="${isRepeat ? 'display:block;' : 'display:none;'}">
-                            <select class="prev-grade-select" title="Select previously earned grade" onchange="window.calculateResult()">
+                            <select class="prev-grade-select" title="Select previously earned grade" onchange="window.calculateResult(); window.haptic('light');">
                                 <option value="F" ${prevGrade === 'F' ? 'selected' : ''}>Prev: F (0.0)</option>
                                 <option value="D" ${prevGrade === 'D' ? 'selected' : ''}>Prev: D (1.0)</option>
                                 <option value="D+" ${prevGrade === 'D+' ? 'selected' : ''}>Prev: D+ (1.3)</option>
@@ -70,7 +82,7 @@
                             </select>
                         </div>
                     </td>
-                    <td style="text-align:center; cursor:pointer; color:var(--danger-color); font-weight:bold; font-size:1.2rem;" onclick="window.removeRow(this)">×</td>
+                    <td class="del-col" style="text-align:center;"><button type="button" class="del-row-btn" onclick="window.removeRow(this); window.haptic('light');" title="Remove course">✕</button></td>
                 `;
                 tbody.appendChild(tr);
 
@@ -81,6 +93,7 @@
             };
 
             window.toggleRepeat = function(btn) {
+                window.haptic('medium');
                 const wrapper = btn.nextElementSibling;
                 btn.classList.toggle('active');
                 if (btn.classList.contains('active')) {
@@ -95,10 +108,22 @@
             };
 
             window.removeRow = function(btn) {
-                const row = btn.parentNode;
-                if(document.querySelectorAll("#gradesTable tbody tr").length > 1) row.remove();
-                else { row.querySelectorAll('input').forEach(i => i.value = ''); row.querySelector('.gp-display').textContent = '-'; }
-                window.calculateResult();
+                window.haptic('light');
+                const row = btn.closest('tr');
+                if (!row) return;
+                if(document.querySelectorAll("#gradesTable tbody tr").length > 1) {
+                    row.style.opacity = '0';
+                    row.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        row.remove();
+                        window.calculateResult();
+                    }, 180);
+                }
+                else { 
+                    row.querySelectorAll('input').forEach(i => i.value = ''); 
+                    row.querySelector('.gp-display').textContent = '-'; 
+                    window.calculateResult();
+                }
             };
 
             window.handleInput = function(input, type) {
@@ -132,6 +157,7 @@
 
             /* ====== Calculation Engine (100% Accurate KFUEIT Math & Repeat Policy) ====== */
             window.calculateResult = function() {
+                window.haptic('success');
                 const rows = document.querySelectorAll("#gradesTable tbody tr");
                 let semPoints = 0, semCredits = 0;
                 let repeatCoursesCount = 0;
@@ -294,9 +320,20 @@
                     statsGrid.style.display = 'none';
                     breakdownText.textContent = '';
                 }
+
+                // Update Mobile Bottom Dock Mini Widget
+                const dockMiniResult = document.getElementById("dockMiniResult");
+                const dockSgpaVal = document.getElementById("dockSgpaVal");
+                const dockCgpaVal = document.getElementById("dockCgpaVal");
+                if (dockMiniResult && dockSgpaVal && dockCgpaVal) {
+                    dockSgpaVal.textContent = sgpa;
+                    dockCgpaVal.textContent = (label === 'CGPA') ? `CGPA: ${gpa}` : `Sem Credits: ${stats ? stats.semCredits : '-'}`;
+                    dockMiniResult.style.display = 'flex';
+                }
             }
 
             window.resetForm = function() {
+                window.haptic('warning');
                 document.querySelectorAll('input').forEach(i => i.value = '');
                 document.querySelectorAll('.gp-display').forEach(s => { s.textContent = '-'; s.style.color = 'rgba(255,255,255,0.7)'; });
                 document.getElementById("progressRing").style.background = `conic-gradient(rgba(255,255,255,0.05) 0deg, rgba(255,255,255,0.05) 0deg)`;
@@ -304,8 +341,33 @@
                 document.getElementById("remarkText").classList.remove("show");
                 document.getElementById("breakdownText").textContent = "";
                 document.getElementById("statsGrid").style.display = 'none';
+                
+                const dockMiniResult = document.getElementById("dockMiniResult");
+                if (dockMiniResult) dockMiniResult.style.display = 'none';
+
                 window.initTable();
                 window.showToast('Calculator reset to initial state.', 'info');
+            };
+
+            /* ====== Mobile Floating Action Dock Navigation Helpers ====== */
+            window.scrollToDashboard = function() {
+                window.haptic('light');
+                const ring = document.getElementById("progressRing") || document.querySelector(".results-dashboard");
+                if (ring) {
+                    ring.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    ring.style.transform = 'scale(1.06)';
+                    setTimeout(() => ring.style.transform = 'scale(1)', 350);
+                }
+            };
+
+            window.triggerScanSheet = function() {
+                window.haptic('light');
+                const ocrCard = document.getElementById('ocrCard');
+                if (ocrCard) {
+                    ocrCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    ocrCard.style.boxShadow = '0 0 35px rgba(76, 201, 240, 0.65)';
+                    setTimeout(() => ocrCard.style.boxShadow = '', 2000);
+                }
             };
 
             /* ====== Modal Controls ====== */
