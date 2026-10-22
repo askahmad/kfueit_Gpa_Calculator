@@ -1457,5 +1457,104 @@
                 if(confetti.length) drawConf();
                 requestAnimationFrame(anim);
             }
+            /* ====== Progressive Web App (PWA) & Offline Module ====== */
+            let deferredInstallPrompt = null;
+
+            // 1. Service Worker Registration
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => {
+                            console.log('[PWA] Service Worker registered with scope:', reg.scope);
+                            reg.onupdatefound = () => {
+                                const installingWorker = reg.installing;
+                                if (installingWorker) {
+                                    installingWorker.onstatechange = () => {
+                                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                            window.showToast('🚀 New version available! Reloading...', 'info');
+                                            setTimeout(() => window.location.reload(), 1500);
+                                        }
+                                    };
+                                }
+                            };
+                        })
+                        .catch(err => {
+                            console.warn('[PWA] Service Worker registration failed:', err);
+                        });
+                });
+            }
+
+            // 2. Install Prompt Handling
+            const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+            const pwaIosBtn = document.getElementById('pwaIosBtn');
+
+            // Check if already running as standalone PWA
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+            // Detect iOS Safari
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (!isStandalone) {
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredInstallPrompt = e;
+                    if (pwaInstallBtn) {
+                        pwaInstallBtn.style.display = 'inline-flex';
+                    }
+                });
+
+                if (isIos && pwaIosBtn) {
+                    pwaIosBtn.style.display = 'inline-flex';
+                }
+            }
+
+            window.installPWA = async function() {
+                if (!deferredInstallPrompt) {
+                    window.showToast('📲 Open browser menu & select "Install App" or "Add to Home screen"', 'info');
+                    return;
+                }
+                try {
+                    deferredInstallPrompt.prompt();
+                    const choice = await deferredInstallPrompt.userChoice;
+                    if (choice && choice.outcome === 'accepted') {
+                        window.showToast('🎉 KFUEIT GPA app installed successfully!', 'success');
+                        if (window.fireConfetti) window.fireConfetti();
+                        if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+                    }
+                } catch (err) {
+                    console.error('[PWA] Install prompt error:', err);
+                }
+                deferredInstallPrompt = null;
+            };
+
+            window.addEventListener('appinstalled', () => {
+                window.showToast('🎉 KFUEIT GPA app installed on your device!', 'success');
+                if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+                deferredInstallPrompt = null;
+            });
+
+            // 3. Online / Offline Connectivity Detection
+            const offlineIndicator = document.getElementById('offlineIndicator');
+
+            function updateNetworkStatus() {
+                if (!navigator.onLine) {
+                    if (offlineIndicator) offlineIndicator.style.display = 'flex';
+                    window.showToast('⚡ Offline Mode Active: App works completely offline!', 'info', 4500);
+                } else {
+                    if (offlineIndicator) offlineIndicator.style.display = 'none';
+                }
+            }
+
+            window.addEventListener('offline', updateNetworkStatus);
+            window.addEventListener('online', () => {
+                if (offlineIndicator) offlineIndicator.style.display = 'none';
+                window.showToast('🌐 Back online!', 'success');
+            });
+
+            if (!navigator.onLine) {
+                updateNetworkStatus();
+            }
+
             window.onresize=()=>{resize();initP();}; resize(); initP(); anim(); window.initTable();
         })();
+

@@ -16,6 +16,15 @@
     <meta property="og:url" content="https://ahmedkhn143.github.io/CGPA-Calculator/" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- PWA & Mobile Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a16">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KFUEIT GPA">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+    <link rel="icon" type="image/png" href="images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- Tesseract.js for Client-Side AI/OCR Transcript Scanning -->
@@ -34,6 +43,24 @@
     <div class="container">
         <h1> 🎓KFUEIT CGPA Calculator</h1>
         <p class="subtitle">Fast. Colorful. Precise.</p>
+
+        <!-- Offline Status Banner -->
+        <div id="offlineIndicator" class="offline-banner" style="display: none;">
+            <span class="offline-pulse-dot"></span>
+            <span>⚡ <strong>Offline Mode Active:</strong> All calculations, PDF scanner, simulator & result card work 100% offline!</span>
+        </div>
+
+        <!-- PWA Install Action Row -->
+        <div class="pwa-top-bar" id="pwaTopBar">
+            <button type="button" id="pwaInstallBtn" class="pwa-install-btn" style="display: none;" onclick="window.installPWA()">
+                <span class="pwa-btn-icon">📲</span>
+                <span class="pwa-btn-title">Install Mobile App</span>
+                <span class="pwa-btn-pill">Offline Ready</span>
+            </button>
+            <button type="button" id="pwaIosBtn" class="pwa-ios-btn" style="display: none;" onclick="window.toggleModal('iosInstallModal')">
+                <span>🍏 Add to iPhone / iPad Home Screen</span>
+            </button>
+        </div>
 
         <!-- AI Transcript Scanner Section -->
         <div class="ocr-card" id="ocrCard">
@@ -380,6 +407,31 @@
             <div id="targetResultBox" class="target-result-box" style="display: none;"></div>
 
             <button type="button" class="close-btn" onclick="window.toggleModal('targetModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- iOS Add to Home Screen Modal -->
+    <div id="iosInstallModal" class="modal">
+        <div class="modal-content modal-ios-content">
+            <div class="target-modal-header">
+                <h2>📲 Install on iPhone / iPad</h2>
+                <p class="target-modal-sub">Run KFUEIT GPA as a standalone app with full offline support</p>
+            </div>
+            <div class="ios-install-steps">
+                <div class="ios-step">
+                    <span class="ios-step-num">1</span>
+                    <div class="ios-step-text">Tap the <strong>Share</strong> button <span class="ios-icon-badge">⎙ / ⎋</span> at the bottom of Safari.</div>
+                </div>
+                <div class="ios-step">
+                    <span class="ios-step-num">2</span>
+                    <div class="ios-step-text">Scroll down the menu and tap <strong>"Add to Home Screen"</strong> <span class="ios-icon-badge">➕</span>.</div>
+                </div>
+                <div class="ios-step">
+                    <span class="ios-step-num">3</span>
+                    <div class="ios-step-text">Tap <strong>Add</strong> at the top right. The KFUEIT GPA app icon will appear on your phone home screen!</div>
+                </div>
+            </div>
+            <button type="button" class="close-btn" onclick="window.toggleModal('iosInstallModal')">Got it!</button>
         </div>
     </div>
 

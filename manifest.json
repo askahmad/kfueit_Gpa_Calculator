@@ -1,0 +1,61 @@
+{
+  "name": "KFUEIT CGPA & SGPA Calculator",
+  "short_name": "KFUEIT GPA",
+  "description": "Official KFUEIT CGPA & SGPA Calculator with PDF & AI Transcript Scanning, Target Planner & Full Offline Support.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a16",
+  "theme_color": "#0a0a16",
+  "categories": ["education", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "images/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Calculate SGPA",
+      "short_name": "SGPA",
+      "description": "Calculate semester GPA with KFUEIT grading scale",
+      "url": "./index.html#calculator",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Scan Transcript PDF",
+      "short_name": "PDF Scan",
+      "description": "Upload and extract transcript data instantly",
+      "url": "./index.html#ocrCard",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Target CGPA Planner",
+      "short_name": "Planner",
+      "description": "Plan required SGPA to hit your target CGPA",
+      "url": "./index.html#targetModal",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

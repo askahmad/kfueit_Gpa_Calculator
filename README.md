@@ -38,6 +38,12 @@ A visually stunning, fully responsive SGPA & CGPA Calculator built specifically 
 - Export your semester calculation as a high-definition branded KFUEIT provisional result card.
 - Includes Student Name, SGPA & CGPA badges, complete course breakdown, academic standing, and date stamp.
 
+### 📲 Progressive Web App (PWA) & 100% Offline Support
+- **Installable Mobile & Desktop App**: Install with a single tap on Android, Windows, Mac, or iOS (Add to Home Screen).
+- **Runs 100% Offline**: Integrated Service Worker (`sw.js`) caches all assets, fonts, icons, and calculation logic so students can calculate SGPA, CGPA, target plans, and generate result cards anytime, anywhere without an active internet connection.
+- **Offline Mode Indicator**: Real-time status banner notifying when you are working offline.
+- **App-like Experience**: Full-screen standalone mode with custom high-resolution icons (192x192, 512x512, maskable) and safe-area adjustments for modern notched smartphones.
+
 ### 💡 Smart Input System
 - Enter Marks (0-100) to auto-generate Grade and GPA.
 - Enter Grade (e.g., A+, B) to auto-fetch the GPA.
