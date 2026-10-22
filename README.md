@@ -6,7 +6,11 @@ A visually stunning, fully responsive SGPA & CGPA Calculator built specifically 
 
 ## ✨ Key Features
 
-### 📸 Smart AI Transcript Scanner (New!)
+### 📄 Smart AI Transcript & PDF Scanner
+- **PDF Upload Support**: Directly upload official KFUEIT semester result gazettes, portal transcripts, and CMS PDF downloads.
+- **Dual-Engine Extraction**:
+  - **Ultra-Fast PDF Text Layer**: Instant digital text parsing for 100% precision.
+  - **AI OCR Fallback**: Built-in OCR for scanned paper documents and photocopies.
 - **Photo Upload & Camera Capture**: Upload any transcript photo, camera snapshot, or portal screenshot.
 - **Clipboard Paste Support**: Directly paste screenshots with `Ctrl + V` anywhere on the page.
 - **Smart Data Extraction**: Automatically detects:
@@ -18,7 +22,7 @@ A visually stunning, fully responsive SGPA & CGPA Calculator built specifically 
 - **Flexible Workflows**:
   - **Option 1 (Previous Sem Mode)**: Import Previous CGPA & Credits with one click, then enter new/upcoming semester courses to compute updated CGPA and SGPA.
   - **Option 2 (Full Auto-fill)**: Automatically populate all scanned subjects into the calculator and calculate instantly!
-- **⚡ Try Demo Test**: Test the OCR scanner instantly with a single click using a synthetic official KFUEIT sample transcript.
+- **⚡ Try Demo Test**: Test both **Demo PDF** and **Demo Photo** instantly with a single click using official KFUEIT sample records.
 
 Smart Input System:
 

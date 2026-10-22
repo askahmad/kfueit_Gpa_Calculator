@@ -246,7 +246,12 @@
             };
             window.onclick = e => { if(e.target.classList.contains('modal')) window.toggleModal(e.target.id); };
 
-            /* ====== OCR Transcript Scanner Engine ====== */
+            /* ====== OCR & PDF Transcript Scanner Engine ====== */
+
+            // Initialize PDF.js Worker
+            if (window.pdfjsLib) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
 
             // High-contrast canvas preprocessor for mobile photos & low-light screenshots
             function preprocessImage(img) {
@@ -287,18 +292,193 @@
                 return canvas;
             }
 
-            window.handleImageUpload = function(event) {
+            window.handleFileUpload = function(event) {
                 const file = event.target.files && event.target.files[0];
                 if (file) processTranscriptFile(file);
                 event.target.value = '';
             };
+            window.handleImageUpload = window.handleFileUpload;
 
             function processTranscriptFile(file) {
-                if (!file.type.startsWith('image/')) {
-                    window.showToast('Please upload a valid image file (PNG, JPG, WEBP).', 'error');
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                const isImage = file.type.startsWith('image/');
+
+                if (!isPdf && !isImage) {
+                    window.showToast('Please upload a valid PDF or Image file (PDF, PNG, JPG, WEBP).', 'error');
                     return;
                 }
 
+                if (isPdf) {
+                    processPdfFile(file);
+                } else {
+                    processImageFile(file);
+                }
+            }
+
+            // PDF text line extraction with vertical bucketing and horizontal sorting
+            async function extractLinesFromPdfPage(page) {
+                const textContent = await page.getTextContent();
+                if (!textContent || !textContent.items || textContent.items.length === 0) return '';
+
+                const lineMap = new Map();
+                for (const item of textContent.items) {
+                    const text = item.str;
+                    if (!text || text.trim() === '') continue;
+                    const y = Math.round(item.transform[5]);
+                    const x = item.transform[4];
+
+                    let matchedKey = null;
+                    for (const key of lineMap.keys()) {
+                        if (Math.abs(key - y) <= 4) {
+                            matchedKey = key;
+                            break;
+                        }
+                    }
+                    if (matchedKey === null) {
+                        matchedKey = y;
+                        lineMap.set(matchedKey, []);
+                    }
+                    lineMap.get(matchedKey).push({ x, text });
+                }
+
+                // PDF Y=0 is at bottom, so higher Y appears earlier on the visual page
+                const sortedY = Array.from(lineMap.keys()).sort((a, b) => b - a);
+                const lines = [];
+                for (const y of sortedY) {
+                    const items = lineMap.get(y);
+                    items.sort((a, b) => a.x - b.x);
+                    lines.push(items.map(it => it.text).join(' ').trim());
+                }
+                return lines.join('\n');
+            }
+
+            // Process PDF file (Digital Text layer + Scanned PDF OCR fallback)
+            async function processPdfFile(file) {
+                const progressBox = document.getElementById('ocrProgressBox');
+                const progressBar = document.getElementById('ocrProgressBar');
+                const progressPercent = document.getElementById('ocrProgressPercent');
+                const statusMsg = document.getElementById('ocrStatusMsg');
+
+                progressBox.style.display = 'block';
+                progressBar.style.width = '15%';
+                progressPercent.textContent = '15%';
+                statusMsg.textContent = 'Loading PDF parser...';
+
+                if (typeof pdfjsLib === 'undefined') {
+                    progressBox.style.display = 'none';
+                    window.showToast('PDF library is loading. Please wait 2 seconds and try again.', 'error');
+                    return;
+                }
+
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    statusMsg.textContent = 'Opening PDF document...';
+                    progressBar.style.width = '30%';
+                    progressPercent.textContent = '30%';
+
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                    const pdf = await loadingTask.promise;
+                    const numPages = pdf.numPages;
+
+                    // Render Page 1 to canvas for preview and OCR fallback
+                    const firstPage = await pdf.getPage(1);
+                    const viewport = firstPage.getViewport({ scale: 1.5 });
+                    const previewCanvas = document.createElement('canvas');
+                    previewCanvas.width = viewport.width;
+                    previewCanvas.height = viewport.height;
+                    const renderCtx = {
+                        canvasContext: previewCanvas.getContext('2d'),
+                        viewport: viewport
+                    };
+                    await firstPage.render(renderCtx).promise;
+
+                    // Show visual preview in modal
+                    const previewImg = document.getElementById('scanPreviewImg');
+                    const previewWrapper = document.getElementById('scanPreviewWrapper');
+                    const docBadge = document.getElementById('scanDocBadge');
+                    if (previewImg && previewWrapper) {
+                        previewImg.src = previewCanvas.toDataURL('image/png');
+                        previewWrapper.style.display = 'flex';
+                    }
+                    if (docBadge) {
+                        docBadge.textContent = `📄 PDF Transcript (${numPages} ${numPages > 1 ? 'Pages' : 'Page'})`;
+                    }
+
+                    // Extract digital text from all pages
+                    let fullText = '';
+                    for (let i = 1; i <= numPages; i++) {
+                        statusMsg.textContent = `Reading PDF page ${i} of ${numPages}...`;
+                        const progressVal = Math.round(30 + (i / numPages) * 50);
+                        progressBar.style.width = `${progressVal}%`;
+                        progressPercent.textContent = `${progressVal}%`;
+
+                        const page = (i === 1) ? firstPage : await pdf.getPage(i);
+                        const pageLines = await extractLinesFromPdfPage(page);
+                        fullText += pageLines + '\n';
+                    }
+
+                    console.log('Extracted PDF Text:', fullText);
+
+                    // Check if document has a digital text layer
+                    const hasDigitalText = fullText.trim().length > 30 && /[A-Za-z0-9]/.test(fullText);
+
+                    if (hasDigitalText) {
+                        progressBar.style.width = '100%';
+                        progressPercent.textContent = '100%';
+                        statusMsg.textContent = 'PDF parsed successfully!';
+                        setTimeout(() => {
+                            progressBox.style.display = 'none';
+                            parseTranscript(fullText, 'PDF');
+                        }, 300);
+                    } else {
+                        // Scanned PDF fallback (photocopy without text layer)
+                        statusMsg.textContent = 'Scanned PDF detected. Running AI OCR on document image...';
+                        progressBar.style.width = '40%';
+                        progressPercent.textContent = '40%';
+
+                        if (typeof Tesseract === 'undefined') {
+                            progressBox.style.display = 'none';
+                            window.showToast('OCR engine is still loading. Please retry in a moment.', 'error');
+                            return;
+                        }
+
+                        const processedCanvas = preprocessImage(previewCanvas);
+                        Tesseract.recognize(
+                            processedCanvas,
+                            'eng',
+                            {
+                                logger: m => {
+                                    if (m.status === 'recognizing text' && m.progress != null) {
+                                        const p = Math.round(40 + m.progress * 55);
+                                        progressBar.style.width = p + '%';
+                                        progressPercent.textContent = p + '%';
+                                        statusMsg.textContent = `Scanning PDF document (${Math.round(m.progress * 100)}%)...`;
+                                    }
+                                }
+                            }
+                        ).then(({ data: { text } }) => {
+                            progressBar.style.width = '100%';
+                            progressPercent.textContent = '100%';
+                            statusMsg.textContent = 'Scanned PDF parsed successfully!';
+                            setTimeout(() => {
+                                progressBox.style.display = 'none';
+                                parseTranscript(text, 'Scanned PDF');
+                            }, 300);
+                        }).catch(err => {
+                            console.error('OCR Error on PDF:', err);
+                            progressBox.style.display = 'none';
+                            window.showToast('Could not extract text from scanned PDF. Please ensure clarity.', 'error');
+                        });
+                    }
+                } catch (err) {
+                    console.error('PDF parsing error:', err);
+                    progressBox.style.display = 'none';
+                    window.showToast('Failed to read PDF file. Please ensure it is a valid PDF document.', 'error');
+                }
+            }
+
+            // Process image file via FileReader and Tesseract OCR
+            function processImageFile(file) {
                 const progressBox = document.getElementById('ocrProgressBox');
                 const progressBar = document.getElementById('ocrProgressBar');
                 const progressPercent = document.getElementById('ocrProgressPercent');
@@ -308,6 +488,9 @@
                 progressBar.style.width = '10%';
                 progressPercent.textContent = '10%';
                 statusMsg.textContent = 'Reading image file...';
+
+                const docBadge = document.getElementById('scanDocBadge');
+                if (docBadge) docBadge.textContent = '🖼️ Photo Transcript';
 
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -354,7 +537,7 @@
                             statusMsg.textContent = 'Transcript parsed successfully!';
                             setTimeout(() => {
                                 progressBox.style.display = 'none';
-                                parseTranscript(text);
+                                parseTranscript(text, 'Photo');
                             }, 350);
                         }).catch(err => {
                             console.error('OCR Error:', err);
@@ -368,12 +551,16 @@
             }
 
             /* ====== Intelligent Transcript Parser ====== */
-            function parseTranscript(text) {
-                console.log('Raw OCR Text:', text);
+            function removeAtIndex(str, index, length) {
+                return str.slice(0, index) + ' ' + str.slice(index + length);
+            }
+
+            function parseTranscript(text, sourceType = 'Transcript') {
+                console.log(`Raw ${sourceType} Text:`, text);
                 
                 // 1. Previous / Total CGPA extraction
                 let foundCGPA = null;
-                const cgpaMatch = text.match(/(?:CGPA|C\.G\.P\.A|Cumulative\s*(?:GPA|Grade|Point)?|Total\s*CGPA|Overall\s*CGPA)[\s:=_-]*([0-4](?:\.\d{1,2})?)/i);
+                const cgpaMatch = text.match(/(?:C\.?G\.?P\.?A|Cumulative\s*(?:Grade\s*Point\s*Average|GPA|Grade|Point)?|Total\s*CGPA|Overall\s*CGPA)[\s:=_-]*([0-4](?:\.\d{1,2})?)/i);
                 if (cgpaMatch) {
                     const val = parseFloat(cgpaMatch[1]);
                     if (!isNaN(val) && val <= 4.0) foundCGPA = val;
@@ -381,7 +568,7 @@
 
                 // 2. Total / Completed Credit Hours extraction
                 let foundCredits = null;
-                const creditsMatch = text.match(/(?:Total\s*(?:Credit\s*)?Hours?|Credits?\s*Earned|Earned\s*Credits?|Completed\s*Credits?|Total\s*Credits?|Cr\.?\s*Earned|Cr\.?\s*Completed|Total\s*Cr(?:\.?\s*Hrs?)?|Cr\s*Hrs)[\s:=_-]*(\d{1,3})/i);
+                const creditsMatch = text.match(/(?:Total\s*(?:Credit\s*)?Hours?|Credits?\s*Earned|Earned\s*Credits?|Completed\s*Credits?|Total\s*Credits?|Cr\.?\s*Earned|Cr\.?\s*Completed|Total\s*Cr(?:\.?\s*Hrs?)?|Cr\s*Hrs|Total\s*CH)[\s:=_-]*(\d{1,3})/i);
                 if (creditsMatch) {
                     const val = parseInt(creditsMatch[1], 10);
                     if (!isNaN(val) && val > 0 && val <= 200) foundCredits = val;
@@ -389,59 +576,67 @@
 
                 // 3. Semester SGPA extraction
                 let foundSGPA = null;
-                const sgpaMatch = text.match(/(?:SGPA|S\.G\.P\.A|Semester\s*(?:GPA|Grade|Point)?)[\s:=_-]*([0-4](?:\.\d{1,2})?)/i);
+                const sgpaMatch = text.match(/(?:S\.?G\.?P\.?A|Semester\s*(?:Grade\s*Point\s*Average|GPA|Grade|Point)?)[\s:=_-]*([0-4](?:\.\d{1,2})?)/i);
                 if (sgpaMatch) {
                     const val = parseFloat(sgpaMatch[1]);
                     if (!isNaN(val) && val <= 4.0) foundSGPA = val;
                 }
 
-                // 4. Student Name extraction
+                // 4. Student Name extraction (stops at newline or next field)
                 let foundName = '';
-                const nameMatch = text.match(/(?:Student\s*Name|Name\s*of\s*Student|Student's\s*Name|Candidate\s*Name|Name)[\s:=_-]+([A-Za-z\s.]{3,35})/i);
+                const nameMatch = text.match(/(?:Student\s*Name|Name\s*of\s*Student|Student's\s*Name|Candidate\s*Name|Name)[\s:=_-]+([^\r\n:,;]+)/i);
                 if (nameMatch) {
-                    foundName = nameMatch[1].replace(/[\r\n]+/g, ' ').trim();
+                    foundName = nameMatch[1].replace(/Roll.*$/i, '').trim();
+                    if (foundName.length > 35) foundName = foundName.substring(0, 35).trim();
                 }
 
                 // 5. Course Rows extraction
                 const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 2);
                 const courses = [];
-                const gradeRegex = /\b(A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D|F)\b/i;
+                const gradeRegex = /(?:^|\s)(A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D|F)(?:\s|$)/i;
 
                 for (let line of lines) {
-                    if (/transcript|gazette|examination|semester|khwaja|fareed|university|engineering|technology|page|date|sr\.?\s*no|roll|registration|status|total|cumulative/i.test(line)) {
+                    // Skip system headers and summary lines
+                    if (/^(khwaja|kfueit|official|gazette|transcript|provisional|examination branch|page\s*\d+|roll\s*no|registration\s*no|cumulative|total\s*credits?|semester\s*sgpa)/i.test(line)) {
+                        continue;
+                    }
+                    if (/course.*(?:code|title).*cr/i.test(line)) {
                         continue;
                     }
 
                     const gMatch = line.match(gradeRegex);
                     if (gMatch) {
                         const grade = gMatch[1].toUpperCase();
-                        let lineClean = line.replace(gMatch[0], ' ');
+                        const matchIdx = gMatch.index + (gMatch[0].startsWith(' ') ? 1 : 0);
+                        let lineClean = removeAtIndex(line, matchIdx, gMatch[1].length);
 
-                        // Credit hours (usually 1, 2, 3, 4)
-                        let cr = 3;
-                        const crMatch = lineClean.match(/\b([1-4])\b/);
-                        if (crMatch) {
-                            cr = parseInt(crMatch[1], 10);
-                            lineClean = lineClean.replace(crMatch[0], ' ');
-                        }
+                        // Strip GP decimals (e.g. 4.00, 3.70, 12.00)
+                        lineClean = lineClean.replace(/\b\d+\.\d{1,2}\b/g, ' ');
 
-                        // Marks (0-100)
+                        // Marks (two digits 10-99, or 100)
                         let marks = '';
-                        const mMatch = lineClean.match(/\b(100|[5-9][0-9]|[0-4]?[0-9])\b/);
+                        const mMatch = lineClean.match(/\b(100|[4-9][0-9]|[1-3][0-9])\b/);
                         if (mMatch) {
                             marks = mMatch[0];
-                            lineClean = lineClean.replace(mMatch[0], ' ');
+                            lineClean = removeAtIndex(lineClean, mMatch.index, mMatch[0].length);
+                        }
+
+                        // Credit hours (single digit 1-6)
+                        let cr = 3;
+                        const crMatch = lineClean.match(/\b([1-6])\b/);
+                        if (crMatch) {
+                            cr = parseInt(crMatch[1], 10);
+                            lineClean = removeAtIndex(lineClean, crMatch.index, crMatch[0].length);
                         }
 
                         // Clean Subject Title
                         let title = lineClean
-                            .replace(/\b\d+(\.\d+)?\b/g, '')
                             .replace(/[:|,\-_/\\]+/g, ' ')
                             .replace(/\s+/g, ' ')
                             .trim();
 
                         if (title.length >= 2) {
-                            if (title.length > 30) title = title.substring(0, 30);
+                            if (title.length > 35) title = title.substring(0, 35).trim();
                             courses.push({
                                 title: title,
                                 marks: marks,
@@ -467,10 +662,11 @@
                 if (foundCredits !== null) itemsFound.push(`${foundCredits} Credits`);
                 if (courses.length > 0) itemsFound.push(`${courses.length} Courses`);
                 
+                const typeIcon = sourceType.includes('PDF') ? '📄' : '🖼️';
                 if (itemsFound.length > 0) {
-                    window.showToast(`✨ Scanned: ${itemsFound.join(', ')}! Please review and apply.`, 'success', 4000);
+                    window.showToast(`${typeIcon} ${sourceType} Scanned: ${itemsFound.join(', ')}! Please review and apply.`, 'success', 4500);
                 } else {
-                    window.showToast(`Scanned image. You can manually adjust values in the review box.`, 'info', 4000);
+                    window.showToast(`${typeIcon} Scanned ${sourceType}. You can adjust values in the review box.`, 'info', 4000);
                 }
             }
 
@@ -682,6 +878,65 @@
                     const file = new File([blob], 'sample_kfueit_transcript.png', { type: 'image/png' });
                     processTranscriptFile(file);
                 }, 'image/png');
+            };
+
+            /* ====== Realistic Sample PDF Transcript Generator ====== */
+            window.loadDemoPdfTranscript = function() {
+                window.showToast('Generating official KFUEIT sample PDF transcript...', 'info', 2000);
+                
+                const textLines = [
+                    "KHWAJA FAREED UNIVERSITY OF ENGINEERING & IT",
+                    "OFFICIAL SEMESTER RESULT TRANSCRIPT",
+                    "Student Name: Muhammad Ahmad Khan",
+                    "Roll No: BSCS-F22-045",
+                    "Previous CGPA: 3.42       Total Credits Earned: 64       Semester SGPA: 3.81",
+                    "",
+                    "Course Code & Title                       Cr.Hrs   Marks   Grade   GP",
+                    "CS-201 Data Structures & Algorithms           3       87       A      4.00",
+                    "CS-203 Computer Org & Assembly                4       78       B+     3.30",
+                    "MATH-202 Linear Algebra                       3       82       A-     3.70",
+                    "SE-201 Software Engineering Spec              3       92       A      4.00",
+                    "ISL-101 Islamic Studies                       2       96       A+     4.00"
+                ];
+
+                let streamBody = "BT\n/F1 14 Tf\n50 720 Td\n";
+                textLines.forEach((line, index) => {
+                    if (index === 0) streamBody += `/F1 16 Tf (${line}) Tj\n`;
+                    else if (index === 1) streamBody += `/F1 12 Tf 0 -22 Td (${line}) Tj\n`;
+                    else if (index === 2) streamBody += `/F1 11 Tf 0 -30 Td (${line}) Tj\n`;
+                    else if (index === 3 || index === 4) streamBody += `0 -18 Td (${line}) Tj\n`;
+                    else if (index === 6) streamBody += `/F1 11 Tf 0 -30 Td (${line}) Tj\n`;
+                    else if (index >= 7) streamBody += `0 -20 Td (${line}) Tj\n`;
+                });
+                streamBody += "ET\n";
+
+                const encoder = new TextEncoder();
+                const streamLength = encoder.encode(streamBody).length;
+
+                const objects = [
+                    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+                    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+                    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+                    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+                    `5 0 obj\n<< /Length ${streamLength} >>\nstream\n${streamBody}endstream\nendobj\n`
+                ];
+
+                let output = "%PDF-1.4\n";
+                const offsets = [0];
+                for (const obj of objects) {
+                    offsets.push(encoder.encode(output).length);
+                    output += obj;
+                }
+                const xrefStart = encoder.encode(output).length;
+                output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+                for (let i = 1; i <= objects.length; i++) {
+                    output += String(offsets[i]).padStart(10, '0') + " 00000 n \n";
+                }
+                output += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
+
+                const blob = new Blob([output], { type: 'application/pdf' });
+                const file = new File([blob], 'sample_kfueit_transcript.pdf', { type: 'application/pdf' });
+                processTranscriptFile(file);
             };
 
             /* ====== Drag & Drop and Clipboard Paste Listeners ====== */

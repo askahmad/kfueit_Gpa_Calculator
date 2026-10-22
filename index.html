@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="style.css">
     <!-- Tesseract.js for Client-Side AI/OCR Transcript Scanning -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- PDF.js for Client-Side PDF Transcript Reading & Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 
 <body>
@@ -38,33 +40,46 @@
             <div class="ocr-card-header">
                 <div class="ocr-badge">
                     <span class="ocr-pulse-dot"></span>
-                    <span>AI Transcript Scanner</span>
+                    <span>AI Transcript & PDF Scanner</span>
                 </div>
-                <button type="button" class="ocr-demo-btn" onclick="window.loadDemoTranscript()" title="Test with a sample KFUEIT transcript">
-                    ⚡ Try Demo
-                </button>
+                <div class="ocr-demo-group">
+                    <button type="button" class="ocr-demo-btn ocr-demo-pdf" onclick="window.loadDemoPdfTranscript()" title="Test with sample PDF transcript">
+                        ⚡ Demo PDF
+                    </button>
+                    <button type="button" class="ocr-demo-btn" onclick="window.loadDemoTranscript()" title="Test with sample photo transcript">
+                        🖼️ Demo Photo
+                    </button>
+                </div>
             </div>
 
             <div class="ocr-dropzone" id="ocrDropzone">
-                <input type="file" id="transcriptFileInput" accept="image/*" style="display:none;" onchange="window.handleImageUpload(event)">
-                <input type="file" id="cameraFileInput" accept="image/*" capture="environment" style="display:none;" onchange="window.handleImageUpload(event)">
+                <input type="file" id="transcriptFileInput" accept="application/pdf,.pdf,image/*" style="display:none;" onchange="window.handleFileUpload(event)">
+                <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" style="display:none;" onchange="window.handleFileUpload(event)">
+                <input type="file" id="imageFileInput" accept="image/*" style="display:none;" onchange="window.handleFileUpload(event)">
+                <input type="file" id="cameraFileInput" accept="image/*" capture="environment" style="display:none;" onchange="window.handleFileUpload(event)">
                 
                 <div class="ocr-drop-icon">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
                 </div>
                 <div class="ocr-drop-text">
-                    <span class="ocr-main-text">Upload or Capture Transcript</span>
-                    <span class="ocr-sub-text">Drop photo, click to browse, or paste (<kbd>Ctrl+V</kbd>)</span>
+                    <span class="ocr-main-text">Upload PDF or Photo Transcript</span>
+                    <span class="ocr-sub-text">Drop PDF transcript / photo, browse, or paste (<kbd>Ctrl+V</kbd>)</span>
                 </div>
                 <div class="ocr-action-pills">
-                    <button type="button" class="ocr-pill-btn" onclick="event.stopPropagation(); document.getElementById('cameraFileInput').click()">
-                        📷 Camera
+                    <button type="button" class="ocr-pill-btn ocr-pill-pdf" onclick="event.stopPropagation(); document.getElementById('pdfFileInput').click()" title="Upload PDF Transcript (Instant extraction)">
+                        📄 Upload PDF
                     </button>
-                    <button type="button" class="ocr-pill-btn ocr-pill-primary" onclick="event.stopPropagation(); document.getElementById('transcriptFileInput').click()">
-                        📁 Browse
+                    <button type="button" class="ocr-pill-btn" onclick="event.stopPropagation(); document.getElementById('imageFileInput').click()" title="Upload Photo (JPG, PNG)">
+                        🖼️ Photo
+                    </button>
+                    <button type="button" class="ocr-pill-btn" onclick="event.stopPropagation(); document.getElementById('cameraFileInput').click()" title="Capture with Camera">
+                        📷 Camera
                     </button>
                 </div>
             </div>
@@ -163,6 +178,7 @@
             <div class="scan-preview-wrapper" id="scanPreviewWrapper" style="display:none;">
                 <div class="scan-img-container">
                     <img id="scanPreviewImg" src="" alt="Transcript Preview">
+                    <div class="scan-doc-badge" id="scanDocBadge">📄 Transcript</div>
                     <div class="laser-scanner" id="laserScanner"></div>
                 </div>
             </div>
